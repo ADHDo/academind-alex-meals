@@ -1,15 +1,73 @@
 import 'package:flutter/material.dart';
 
 import './screens/meal_detail_screen.dart';
-import './screens/categories_screen.dart';
+import './screens/tabs_screen.dart';
 import './screens/category_meals_screen.dart';
+import './screens/filters_screen.dart';
+import './dummy_data.dart';
+import './models/meal.dart';
 
 void main() {
   runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   // This widget is the root of your application.
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  Map<String, bool> _filters = {
+    'gluten': false,
+    'lactose': false,
+    'vegan': false,
+    'vegetarian': false,
+  };
+  List<Meal> _availableMeals = DUMMY_MEALS;
+
+  List<Meal> _favoriteMeals = [];
+
+  void _setFilters(Map<String, bool> filterData) {
+    setState(() {
+      _filters = filterData;
+
+      _availableMeals = DUMMY_MEALS.where((meal) {
+        if (_filters['gluten'] && !meal.isGlutenFree) {
+          return false;
+        }
+        if (_filters['lactose'] && !meal.isLactoseFree) {
+          return false;
+        }
+        if (_filters['vegan'] && !meal.isVegan) {
+          return false;
+        }
+        if (_filters['vegetarian'] && !meal.isVegetarian) {
+          return false;
+        }
+        return true;
+      }).toList();
+    });
+  }
+
+  void _toggleFavorite(String mealId) {
+    final index = _favoriteMeals.indexWhere((meal) => meal.id == mealId);
+
+    if (index >= 0) {
+      setState(() {
+        _favoriteMeals.removeAt(index);
+      });
+    } else {
+      setState(() {
+        _favoriteMeals.add(DUMMY_MEALS.firstWhere((meal) => meal.id == mealId));
+      });
+    }
+  }
+
+  bool _isMealFavorite(String id) {
+    return _favoriteMeals.any((meal) => meal.id == id);
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -34,15 +92,24 @@ class MyApp extends StatelessWidget {
       ),
       routes: {
         // '/' specifies a home page. alternatively add it as home: argument in MaterialApp()
-        '/': (ctx) => CategoriesScreen(),
-        CategoryMealsScreen.routeName: (ctx) => CategoryMealsScreen(),
-        MealDetailScreen.routeName: (ctx) => MealDetailScreen(),
+        '/': (ctx) => TabsScreen(favoriteMeals: _favoriteMeals),
+        CategoryMealsScreen.routeName: (ctx) => CategoryMealsScreen(
+              availableMeals: _availableMeals,
+            ),
+        MealDetailScreen.routeName: (ctx) => MealDetailScreen(
+              toggleFavorite: _toggleFavorite,
+              isFavorite: _isMealFavorite,
+            ),
+        FiltersScreen.routeName: (ctx) => FiltersScreen(
+              saveFilters: _setFilters,
+              filters: _filters,
+            ),
       },
       // used for routes not included above
       onGenerateRoute: (settings) {
         print(settings.arguments);
         return MaterialPageRoute(
-          builder: (ctx) => CategoriesScreen(),
+          builder: (ctx) => TabsScreen(favoriteMeals: _favoriteMeals),
         );
       },
     );
@@ -68,19 +135,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     // This method is rerun every time setState is called, for instance as done
